@@ -1,0 +1,307 @@
+#####################
+###start_variables###
+#####################
+
+###read_in_datasets###
+######################
+
+###continuous_character_data###
+continuous_data <- readContinuousCharacterData("...")
+
+##molecular_data_wihout_outgroup_sequences###
+molecular_data_no_og <- readDiscreteCharacterData("...")
+
+###read_in_start_trees###
+#########################
+
+###start_tree_for_the_time_tree###
+time_tree_start <- readTrees("...")[1] # ultrametric topol for time estimation
+
+###start_tree_for_molecular_br_length_estimation###
+molecular_br_lens_tree_start <- readTrees("...")[1] # branch length topol for branch length estimation
+
+###time_tree_info###
+####################
+
+root_time <- time_tree_start.rootAge()
+n_taxa <- continuous_data.ntaxa() 
+n_branches <- n_taxa * 2 - 2
+taxa <- continuous_data.names()
+n_nodes = time_tree_start.nnodes()
+n_tips = time_tree_start.ntips()
+n_continuous_char = continuous_data.nchar()
+
+###branch_length_tree_info###
+#############################
+
+n_molecular_br_len_branches <- (molecular_data_no_og.ntaxa()*2)-2
+n_taxa_molecular_br_lens <- molecular_data_no_og.ntaxa() 
+
+###move_and_monitor_vectors###
+##############################
+
+mvi = 0
+mni = 0
+
+##################################
+###RECONSTRUCT_CONTINUOUS_TRAIT###
+##################################
+
+###branch_length_search###
+##########################
+
+for (j in 1:n_continuous_char){
+
+continuous_br_lens[j][n_nodes] := 0
+
+for (i in (n_nodes-1):(n_tips+1)){
+continuous_br_lens[j][i] ~ dnUniform(1e-5, 10)
+moves[++mvi] = mvSlide(continuous_br_lens[j][i], delta=10, tune=true ,weight=2) 
+moves[++mvi] = mvScale(continuous_br_lens[j][i], lambda=10, tune=true ,weight=2) 
+}
+
+for (i in n_tips:1) {
+continuous_br_lens[j][i] ~ dnUniform(1e-5, 10)
+moves[++mvi] = mvSlide(continuous_br_lens[j][i], delta=10, tune=true ,weight=2)
+moves[++mvi] = mvScale(continuous_br_lens[j][i], lambda=10, tune=true ,weight=2) 
+}
+
+}
+
+###reconstruct_the_continuous_trait###
+######################################
+
+for (j in 1:n_continuous_char){
+
+log_continuous_value[j][n_nodes] ~ dnUniform(-10,10)
+moves[++mvi] = mvSlide(log_continuous_value[j][n_nodes], delta=10, tune=true ,weight=0.5) 
+moves[++mvi] = mvScale(log_continuous_value[j][n_nodes], lambda=10, tune=true ,weight=0.5)
+moves[++mvi] = mvSlide(log_continuous_value[j][n_nodes], delta=1, tune=true ,weight=0.5) 
+moves[++mvi] = mvScale(log_continuous_value[j][n_nodes], lambda=1, tune=true ,weight=0.5) 
+
+for (i in (n_nodes-1):(n_tips+1) ) {
+log_continuous_value[j][i] ~ dnNorm(log_continuous_value[j][time_tree_start.parent(i)], sd=continuous_br_lens[j][i]) # longer branch accommodates bigger change in log_continuous_value
+moves[++mvi] = mvSlide(log_continuous_value[j][i], delta=10, tune=true ,weight=0.5) 
+moves[++mvi] = mvScale(log_continuous_value[j][i], lambda=10, tune=true ,weight=0.5)
+moves[++mvi] = mvSlide(log_continuous_value[j][i], delta=1, tune=true ,weight=0.5) 
+moves[++mvi] = mvScale(log_continuous_value[j][i], lambda=1, tune=true ,weight=0.5) 
+}
+
+for (i in n_tips:1){
+log_continuous_value[j][i] ~ dnNorm(log_continuous_value[j][time_tree_start.parent(i)], sd=continuous_br_lens[j][i])
+log_continuous_value[j][i].clamp(continuous_data.getTaxon(time_tree_start.nodeName(i))[j])
+}
+
+}
+
+###
+for (j in 1:n_nodes){
+for (i in 1:n_continuous_char){
+all_values_for_node_original[j][i] := log_continuous_value[i][j]
+}
+}
+
+for (j in 1:n_nodes){
+mean_all_values_for_node_original[j] := mean(all_values_for_node_original[j])
+}
+
+###
+
+for (j in 1:n_continuous_char){
+min_log_continuous_value[j] := min(log_continuous_value[j]) 
+for (i in n_nodes:1){
+continuous_value[j][i] := log_continuous_value[j][i] + (1-min_log_continuous_value[j])
+}
+}
+
+##################################
+###GET_MOLECULAR_BRANCH_LENGTHS###
+##################################
+
+for (i in 1:n_molecular_br_len_branches){
+molecular_br_lens[i] <- molecular_br_lens_tree_start.branchLength(i)
+}
+
+#####################
+###GET_CORRELATION###
+#####################
+
+###first_get_root_to_tip_vectors###
+###################################
+
+###continuous_trait###
+
+for (b in 1:n_taxa){
+root_to_tip_vector_continuous_values[b] = v(b)
+node_counter = v(b)
+continue = 1 
+while(continue == 1){
+if (time_tree_start.isRoot(time_tree_start.parent(node_counter[node_counter.size()]))){
+continue = 0
+} else {
+root_to_tip_vector_continuous_values[b] = append(root_to_tip_vector_continuous_values[b], time_tree_start.parent(node_counter[node_counter.size()]))
+node_counter = append(node_counter, time_tree_start.parent(node_counter[node_counter.size()]))
+}
+}
+}
+
+###molecular_branch_length###
+
+for (b in 1:n_taxa_molecular_br_lens){
+root_to_tip_vector_br_lens[b] = v(b)
+node_counter = v(b)
+continue = 1 
+while(continue == 1){
+if (molecular_br_lens_tree_start.isRoot(molecular_br_lens_tree_start.parent(node_counter[node_counter.size()]))){
+root_to_tip_vector_br_lens[b] = append(root_to_tip_vector_br_lens[b], molecular_br_lens_tree_start.parent(node_counter[node_counter.size()]))
+continue = 0
+} else {
+root_to_tip_vector_br_lens[b] = append(root_to_tip_vector_br_lens[b], molecular_br_lens_tree_start.parent(node_counter[node_counter.size()]))
+node_counter = append(node_counter, molecular_br_lens_tree_start.parent(node_counter[node_counter.size()]))
+}
+}
+}
+
+###GET_VALUE_INFORMATION###
+###########################
+
+###get_continuous_trait_value_information###
+
+for (a in 1:continuous_value.size()){
+for (b in 1:root_to_tip_vector_continuous_values.size()){
+for (c in 1:1){ #root_to_tip_vector_continuous_values[b].size()){
+root_to_tip_continuous_values[a][b][c] := continuous_value[a][root_to_tip_vector_continuous_values[b][c]]
+}
+}
+}
+
+for (a in 1:root_to_tip_continuous_values.size()){
+for (b in 1:root_to_tip_continuous_values[a].size()){
+mean_root_to_tip_continuous_values[a][b] := mean(root_to_tip_continuous_values[a][b])
+}
+}
+
+for (a in 1:mean_root_to_tip_continuous_values.size()){
+mean_of_mean_root_to_tip_continuous_values[a] := mean(mean_root_to_tip_continuous_values[a])
+}
+
+for (a in 1:mean_of_mean_root_to_tip_continuous_values.size()){
+for (b in 1:mean_root_to_tip_continuous_values[a].size()){
+root_to_tip_continuous_value_var[a][b] := (mean_root_to_tip_continuous_values[a][b]/mean_of_mean_root_to_tip_continuous_values[a])-1 
+}
+}
+
+###get_molecular_br_length_information###
+
+for (a in 1:root_to_tip_vector_br_lens.size()){
+for (b in 1:(root_to_tip_vector_br_lens[a].size()-1)){
+root_to_tip_br_lens[a][b] := molecular_br_lens[root_to_tip_vector_br_lens[a][b]]
+}
+}
+
+for (a in 1:root_to_tip_br_lens.size()){
+root_to_tip_br_sums[a] := sum(root_to_tip_br_lens[a])
+}
+
+root_to_tip_rates := root_to_tip_br_sums/root_time
+mean_root_to_tip_rates := mean(root_to_tip_rates)
+
+root_to_tip_rates_var := (root_to_tip_rates/mean_root_to_tip_rates)-1 
+
+###get_correlation###
+#####################
+
+for (a in 1:n_continuous_char){
+correlation_final[a] ~ dnUniform(-10, 10)
+moves[++mvi] = mvSlide(correlation_final[a], delta=10, tune=true)
+moves[++mvi] = mvScale(correlation_final[a], lambda=10, tune=true)
+moves[++mvi] = mvSlide(correlation_final[a], delta=1, tune=true)
+moves[++mvi] = mvScale(correlation_final[a], lambda=1, tune=true)
+moves[++mvi] = mvSlide(correlation_final[a], delta=0.1, tune=true)
+moves[++mvi] = mvScale(correlation_final[a], lambda=0.1, tune=true)
+}
+
+#########################################
+###RECONSTRUCT_VALUES_WITH_CORRELATION###
+#########################################
+
+for (j in 1:n_continuous_char){
+
+continuous_value_scaled[j][n_nodes] := continuous_value[j][n_nodes] 
+
+for (i in (n_nodes-1):(n_tips+1) ) {
+continuous_value_scaled[j][i] := continuous_value_scaled[j][time_tree_start.parent(i)] + continuous_value_scaled[j][time_tree_start.parent(i)]*(correlation_final[j] * ((continuous_value[j][i] - continuous_value[j][time_tree_start.parent(i)])/continuous_value[j][time_tree_start.parent(i)]))
+}
+for (i in n_tips:1){
+continuous_value_scaled[j][i] := continuous_value_scaled[j][time_tree_start.parent(i)] + continuous_value_scaled[j][time_tree_start.parent(i)]*(correlation_final[j] * ((continuous_value[j][i] - continuous_value[j][time_tree_start.parent(i)])/continuous_value[j][time_tree_start.parent(i)]))
+}
+
+}
+
+#########################################################
+###GET_CORRELATION_TRAIT_IN_RELATION_TO_MOLECULAR_RATE###
+#########################################################
+
+for (a in 1:continuous_value_scaled.size()){
+mean_continuous_value_scaled[a] := mean(continuous_value_scaled[a])
+}
+
+###trait_rate_divider
+
+for (a in 1:root_to_tip_continuous_values.size()){
+overall_scaler[a] := mean_root_to_tip_rates/mean_continuous_value_scaled[a]
+}
+
+########################################
+###LINK_TO_DIVERGENCE_TIME_ESTIMATION###
+########################################
+
+Q_2 := fnJC(4)
+
+###branching_process###
+#######################
+
+timetree ~ dnBDP(lambda=0.2, mu=0, rho=1, rootAge=root_time, samplingStrategy="uniform", condition="nTaxa", taxa=taxa)
+timetree.setValue(time_tree_start)
+
+moves[++mvi] = mvSubtreeScale(timetree, weight=5.0)
+moves[++mvi] = mvNodeTimeSlideUniform(timetree, weight=10.0)
+
+###clock_model###
+#################
+
+for (j in 1:n_continuous_char){
+branch_rates_vector[j] := continuous_value_scaled[j]*overall_scaler[j]
+}
+
+for (j in 1:(n_nodes-1)){
+for (i in 1:n_continuous_char){
+branch_rates_vector_two[j][i] := branch_rates_vector[i][j]
+}
+}
+
+for (j in 1:(n_nodes-1)){
+branch_rates[j] := abs(mean(branch_rates_vector_two[j]))
+}
+
+###combine###
+#############
+
+seq_two ~ dnPhyloCTMC(timetree, Q_2, branchRates=branch_rates, type="DNA")
+seq_two.clamp(molecular_data_no_og)
+
+##################
+###WRITE_OUTPUT###
+##################
+
+combined_model = model(timetree) 
+
+monitors[1] = mnScreen(printgen=10)
+monitors[2] = mnModel(filename= "...", printgen=10, separator = TAB)
+monitors[3] = mnFile(filename= "...", printgen=10, timetree)
+
+chain = mcmc(combined_model, monitors, moves, nruns=1)
+chain.burnin(1000, tuningInterval=100)
+chain.run(600000, tuningInterval=200)
+
+clear(timetree, continuous_value, continuous_br_lens, rate_mean, seq_two, root_time)
