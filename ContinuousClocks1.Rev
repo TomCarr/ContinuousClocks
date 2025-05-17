@@ -1,0 +1,198 @@
+#####################
+###start_variables###
+#####################
+
+###read_in_datasets###
+######################
+
+###continuous_character_data###
+continuous_data <- readContinuousCharacterData("...")
+
+##molecular_data_wihout_outgroup_sequences###
+molecular_data <- readDiscreteCharacterData("...")
+
+###read_in_start_trees###
+#########################
+
+###start_tree_for_the_time_tree###
+time_tree_start <- readTrees("...")[1] # ultrametric topol for time estimation
+
+###start_tree_for_molecular_br_length_estimation###
+molecular_br_lens_tree_start <- readTrees("...")[1] # branch length topol for branch length estimation
+
+###time_tree_info###
+####################
+
+root_time <- time_tree_start.rootAge()
+n_taxa <- continuous_data.ntaxa() 
+n_branches <- n_taxa * 2 - 2
+taxa <- continuous_data.names()
+n_nodes = time_tree_start.nnodes()
+n_tips = time_tree_start.ntips()
+n_continuous_char = continuous_data.nchar()
+
+###branch_length_tree_info###
+#############################
+
+n_molecular_br_len_branches <- (molecular_data.ntaxa()*2)-2
+n_taxa_molecular_br_lens <- molecular_data.ntaxa() 
+
+###move_and_monitor_vectors###
+##############################
+
+mvi = 0
+mni = 0
+
+##################################
+###RECONSTRUCT_CONTINUOUS_TRAIT###
+##################################
+
+###branch_length_search### ###i.e. this generates the disparity branch lengths, which define the SD of the distribution from which the continuous trait is reconstructed (lines 74-96)
+##########################
+
+for (j in 1:n_continuous_char){
+
+continuous_br_lens[j][n_nodes] := 0
+
+for (i in (n_nodes-1):(n_tips+1)){
+continuous_br_lens[j][i] ~ dnUniform(1e-5, 10)
+moves[++mvi] = mvSlide(continuous_br_lens[j][i], delta=10, tune=true ,weight=5) 
+moves[++mvi] = mvScale(continuous_br_lens[j][i], lambda=10, tune=true ,weight=5) 
+}
+
+for (i in n_tips:1) {
+continuous_br_lens[j][i] ~ dnUniform(1e-5, 10)
+moves[++mvi] = mvSlide(continuous_br_lens[j][i], delta=10, tune=true ,weight=5)
+moves[++mvi] = mvScale(continuous_br_lens[j][i], lambda=10, tune=true ,weight=5) 
+}
+
+}
+
+###reconstruct_the_continuous_trait###
+######################################
+
+for (j in 1:n_continuous_char){
+
+log_continuous_value[j][n_nodes] ~ dnUniform(-10,10)
+moves[++mvi] = mvSlide(log_continuous_value[j][n_nodes], delta=10, tune=true ,weight=5) 
+moves[++mvi] = mvScale(log_continuous_value[j][n_nodes], lambda=10, tune=true ,weight=5)
+moves[++mvi] = mvSlide(log_continuous_value[j][n_nodes], delta=1, tune=true ,weight=5) 
+moves[++mvi] = mvScale(log_continuous_value[j][n_nodes], lambda=1, tune=true ,weight=5) 
+
+for (i in (n_nodes-1):(n_tips+1) ) {
+log_continuous_value[j][i] ~ dnNorm(log_continuous_value[j][time_tree_start.parent(i)], sd=continuous_br_lens[j][i]) # longer branch accommodates bigger change in log_continuous_value
+moves[++mvi] = mvSlide(log_continuous_value[j][i], delta=10, tune=true ,weight=5) 
+moves[++mvi] = mvScale(log_continuous_value[j][i], lambda=10, tune=true ,weight=5)
+moves[++mvi] = mvSlide(log_continuous_value[j][i], delta=1, tune=true ,weight=5) 
+moves[++mvi] = mvScale(log_continuous_value[j][i], lambda=1, tune=true ,weight=5) 
+}
+
+for (i in n_tips:1){
+log_continuous_value[j][i] ~ dnNorm(log_continuous_value[j][time_tree_start.parent(i)], sd=continuous_br_lens[j][i])
+log_continuous_value[j][i].clamp(continuous_data.getTaxon(time_tree_start.nodeName(i))[j])
+}
+
+}
+
+###########################
+###EXTRA_RECORDING_POINT###
+###########################
+
+for (j in 1:n_nodes){
+for (i in 1:n_continuous_char){
+all_values_for_node_original[j][i] := log_continuous_value[i][j]
+}
+}
+
+for (j in 1:n_nodes){
+mean_all_values_for_node_original[j] := mean(all_values_for_node_original[j])
+}
+
+###
+
+for (j in 1:n_continuous_char){ # could exponentiate rather than offset from the lowest value, they have to be > 0
+min_log_continuous_value[j] := min(log_continuous_value[j]) 
+for (i in n_nodes:1){
+continuous_value[j][i] := log_continuous_value[j][i] + (1-min_log_continuous_value[j])
+}
+}
+
+#################
+###CORRELATION### ### very important - need to change this depending on your dataset. There is one correlation for each trait. Can also extent to one correlation per trait to gene 
+#################
+
+for (a in 1:continuous_value.size()){
+correlation_final[a] = 1
+}
+
+scaler ~ dnUniform(0, 100) # an overall scaler value to go between traits and rates
+moves[++mvi] = mvSlide(scaler)
+
+#########################################
+###RECONSTRUCT_VALUES_WITH_CORRELATION###
+#########################################
+
+for (j in 1:n_continuous_char){
+
+continuous_value_scaled[j][n_nodes] := continuous_value[j][n_nodes] 
+
+for (i in (n_nodes-1):(n_tips+1) ) {
+continuous_value_scaled[j][i] := continuous_value_scaled[j][time_tree_start.parent(i)] + continuous_value_scaled[j][time_tree_start.parent(i)]*(correlation_final[j] * ((continuous_value[j][i] - continuous_value[j][time_tree_start.parent(i)])/continuous_value[j][time_tree_start.parent(i)]))
+}				
+
+for (i in n_tips:1){
+continuous_value_scaled[j][i] := continuous_value_scaled[j][time_tree_start.parent(i)] + continuous_value_scaled[j][time_tree_start.parent(i)]*(correlation_final[j] * ((continuous_value[j][i] - continuous_value[j][time_tree_start.parent(i)])/continuous_value[j][time_tree_start.parent(i)]))
+}
+
+}
+
+########################################
+###LINK_TO_DIVERGENCE_TIME_ESTIMATION###
+########################################
+
+Q_2 := fnJC(4) # or other more complicated molecular  sequence evolution model
+
+###branching_process###
+#######################
+
+timetree ~ dnBDP(lambda=0.2, mu=0, rho=1, rootAge=root_time, samplingStrategy="uniform", condition="nTaxa", taxa=taxa)
+timetree.setValue(time_tree_start)
+
+moves[++mvi] = mvSubtreeScale(timetree, weight=5.0)
+moves[++mvi] = mvNodeTimeSlideUniform(timetree, weight=15.0)
+moves[++mvi] = mvTreeScale(tree=timetree, delta=1.0, weight=3.0, tune=true)
+moves[++mvi] = mvTreeScale(tree=timetree, delta=0.1, weight=3.0, tune=true)
+moves[++mvi] = mvTreeScale(tree=timetree, delta=0.01, weight=3.0, tune=true)
+
+###clock_model###
+#################
+
+for (j in 1:(n_nodes-1)){
+for (i in 1:n_continuous_char){
+branch_rates_vector[j][i] := continuous_value_scaled[i][j]
+}
+}
+
+for (j in 1:(n_nodes-1)){
+branch_rates[j] := abs(mean(branch_rates_vector[j])) * scaler
+}
+
+###combine###
+#############
+
+seq_two ~ dnPhyloCTMC(timetree, Q_2, branchRates=branch_rates, type="DNA")
+seq_two.clamp(molecular_data)
+
+##################
+###WRITE_OUTPUT###
+##################
+
+combined_model = model(timetree) 
+
+monitors[1] = mnScreen(printgen=10)
+monitors[2] = mnModel(filename= "...", printgen=10, separator = TAB)
+monitors[3] = mnFile(filename= "...", printgen=10, timetree)
+
+chain = mcmc(combined_model, monitors, moves, nruns=1)
+chain.burnin(2000, tuningInterval=10)
+chain.run(10000)
