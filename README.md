@@ -6,7 +6,7 @@ Estimates of substitution rates (and thus divergence times) from molecular seque
 
 Some continuous traits (e.g. longevity) are known to be associated with molecular substitution rates. Continuous traits are also useful because they retain a consistent phylogenetic signal regardless of the rate at which they evolve - i.e. they do not become saturated ([Parins-Fukuchi 2018](https://doi.org/10.1093/sysbio/syx072)). 
 
-The models outlined below are still being developed, but are designed to use these useful characteristics of continuous traits as a means get better estimates of molecular substitution rates (and therefore divergence times).
+The models outlined below are still being developed, but are designed to use these useful characteristics of continuous traits as a means of getting better estimates of molecular substitution rates (and therefore divergence times).
 
 ## Outline
 
