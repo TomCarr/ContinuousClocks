@@ -11,7 +11,7 @@ These models outlined below are designed to use these useful characteristics of 
 ## Outline
 
 - All the models below use a fixed tree topology (although could easily be extended to use a distribution of topologies), presumably estimated from molecular sequence data.
-- Continuous traits are reconstructed on this topology. Importantly, continous traits are reconstructed using a BM process that accounts for any amount of variation in rate ($σ<sup>2</sup>$). This is because the continuous traits are reconstructed on disparity branch lengths - i.e. the expected variance between ancestral and descendant branches is dependent on $σ<sup>2</sup>*t$ for each branch.
+- Continuous traits are reconstructed on this topology. Importantly, continous traits are reconstructed using a BM process that accounts for any amount of variation in rate ($ σ<sup>2</sup> $). This is because the continuous traits are reconstructed on disparity branch lengths - i.e. the expected variance between ancestral and descendant branches is dependent on $σ<sup>2</sup>*t$ for each branch.
 - 
 
 
