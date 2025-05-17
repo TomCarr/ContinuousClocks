@@ -19,6 +19,8 @@ The models outlined below are still being developed, but are designed to use the
 - Broadly speaking, this method may be useful because it uses identifiable parameters (i.e. continuous trait reconstructions on disparity branch lengths) to inform rate estimates. In certain situations this can provide a means of alleviating identifiability issues that critically undermine other methods. 
 
 ### Model 1
+This does the above steps in a fairly simple manner. It works in simulations in terms of it estimates accurate divergence times regardless of variation in _σ<sup>2</sup>_.
+In this model the correlation between each continuous trait and the molecular sequence data needs to be specified prior to running it - line 125 - you have one value for each continuous trait
 
 
 
