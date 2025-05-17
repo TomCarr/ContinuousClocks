@@ -26,7 +26,7 @@ In this model the correlation between each continuous trait and the molecular se
 This one calculates the correlation based on root to tip distances in  the molecular branch length tree, and the trait values along those branches. There are other ways to do this too. Is then uses these calculations in the divergence time estimation. 
 
 
-### [Example 3](
+### [Example 3](https://github.com/TomCarr/ContinuousClocks/blob/main/ContinuousClocks3.Rev)
 This one estimates the correlation as part of the model, rather than calculating it based on root to tip values prior to the analysis. 
 
 
