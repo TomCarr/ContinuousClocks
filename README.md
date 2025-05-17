@@ -22,7 +22,7 @@ The models outlined below are still being developed, but are designed to use the
 This does the above steps in a fairly simple manner. It works in simulations in terms of it estimates accurate divergence times regardless of variation in _σ<sup>2</sup>_.
 In this model the correlation between each continuous trait and the molecular sequence data needs to be specified prior to running it - line 125 - you have one value for each continuous trait.
 
-###[Example 2](
+### [Example 2](https://github.com/TomCarr/ContinuousClocks/blob/main/ContinuousClocks2.Rev)
 This one calculates the correlation based on root to tip distances in  the molecular branch length tree, and the trait values along those branches. There are other ways to do this too. Is then uses these calculations in the divergence time estimation. 
 
 
