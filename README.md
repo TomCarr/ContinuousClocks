@@ -2,7 +2,7 @@
 
 _(things here still being developed)_
 
-Estimates of substitution rates (and thus divergence times) from molecular sequence data are strongly influenced/entirely determined by assumptions. This is because the substitution rate for each branch is not identifiable i.e. the likelihood depends on a product of the substitution rate and time duration of each branch. Often the assumptions we use in this context are difficult to justify.  
+Estimates of substitution rates (and therefore divergence times) from molecular sequence data are strongly influenced/entirely determined by assumptions. This is because the substitution rate for each branch is not identifiable i.e. the likelihood depends on a product of the substitution rate and time duration of each branch. Often the assumptions we use in this context are difficult to justify.  
 
 Some continuous traits (e.g. longevity) are known to be associated with molecular substitution rates. Continuous traits are also useful because they retain a consistent phylogenetic signal regardless of the rate at which they evolve - i.e. they do not become saturated ([Parins-Fukuchi 2018](https://doi.org/10.1093/sysbio/syx072)). 
 
