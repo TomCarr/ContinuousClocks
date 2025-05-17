@@ -29,7 +29,9 @@ This one calculates the correlation based on root to tip distances in  the molec
 ### [Example 3](https://github.com/TomCarr/ContinuousClocks/blob/main/ContinuousClocks3.Rev)
 This one estimates the correlation as part of the model, rather than calculating it based on root to tip values prior to the analysis. 
 
-The latter two examples can be extended to run over multiple loci. Currently, we are working on ways to do this most efficiently - it potentially involves a large increase in the number of parameters. This is likely to involve moving away from RevBayes for very large datasets. Ideally estimates from the latter two examples are most strongly influenced by trait/loci combinations with the strongest correlation. THe extent to which this is the case still needs to be determined - if not more extensive filtering of datasets would be required.  
+The latter two examples can be extended to run over multiple loci. The most efficient way of doing this still needs to be worked out - it potentially involves a large increase in the number of parameters. This is likely to involve moving away from RevBayes for very large datasets. 
+
+Ideally, estimates from the latter two examples are most strongly influenced by trait/loci combinations with the strongest correlation. The extent to which this is the case still needs to be determined - if it is not the case, more extensive filtering of datasets would be required.  
 
 
 
